@@ -11,7 +11,6 @@ A full-stack machine learning web application built with ReactJS and FastAPI for
 * ReactJS
 * JavaScript
 * CSS
-* Axios
 
 ### Backend
 
@@ -34,17 +33,16 @@ A full-stack machine learning web application built with ReactJS and FastAPI for
 titanic_ml_prediction/
 │
 ├── backend/
-│   ├── app/
-│   ├── models/
+│   ├── Dockerfile
 │   ├── requirements.txt
 │   └── main.py
 │
 ├── frontend/
 │   ├── src/
 │   ├── public/
+|   ├── Dockerfile
 │   └── package.json
 │
-├── dataset/
 ├── docker-compose.yml
 ├── requirements.txt
 ├── .gitignore
