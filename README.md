@@ -27,30 +27,6 @@ A full-stack machine learning web application built with ReactJS and FastAPI for
 
 ---
 
-## Project Structure
-
-```text
-titanic_ml_prediction/
-│
-├── backend/
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── main.py
-│
-├── frontend/
-│   ├── src/
-│   ├── public/
-|   ├── Dockerfile
-│   └── package.json
-│
-├── docker-compose.yml
-├── requirements.txt
-├── .gitignore
-└── README.md
-```
-
----
-
 ## Features
 
 * Titanic survival prediction
