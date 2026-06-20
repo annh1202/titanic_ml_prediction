@@ -16,14 +16,20 @@ app.add_middleware(
 
 
 class UserInput(BaseModel):
-    name: str
-    age: int
+    Pclass: int
+    Sex: str
+    Age: int
+    SibSp: int
+    Parch: int
+    Fare: float
+    Embarked: str
+
 
 
 @app.post("/predict")
 def predict(data: UserInput):
 
     return {
-        "message": f"Hello {data.name}",
-        "age": data.age
+        "prediction": 0,
+        "confidence": 0.85
     }
