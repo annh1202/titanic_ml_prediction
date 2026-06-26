@@ -1,0 +1,10 @@
+# Database
+DATABASE_URL=
+
+# Model paths
+MODEL_PATH=
+PREPROCESSOR_PATH=
+
+# API
+APP_ENV=development
+APP_PORT=8000
