@@ -127,7 +127,7 @@
             <td>35</td>
             <td>Hạng 2</td>
             <td class="chet">Không sống sót</td>
-            <td>18/04/1912</td>
+            <td>15/04/1912</td>
         </tr>
 
     </table>
