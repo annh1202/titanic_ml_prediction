@@ -133,8 +133,8 @@
     </table>
 
     <div class="button">
-        <button class="btn1">Dự đoán mới</button>
-        <button class="btn2">Xóa lịch sử</button>
+        <button class="btn-new">Dự đoán mới</button>
+        <button class="btn-delete">Xóa lịch sử</button>
     </div>
 
 </div>
