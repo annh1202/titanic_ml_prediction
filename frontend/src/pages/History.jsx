@@ -95,6 +95,7 @@
     <table>
 
         <tr>
+            <th>STT</th>
             <th>Họ tên</th>
             <th>Giới tính</th>
             <th>Tuổi</th>
