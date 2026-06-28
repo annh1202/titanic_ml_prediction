@@ -1,3 +1,4 @@
+pandas==3.0.3
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.14.0
@@ -11,7 +12,6 @@ idna==3.18
 joblib==1.5.3
 narwhals==2.22.1
 numpy==2.4.6
-pandas==3.0.3
 pydantic==2.13.4
 pydantic_core==2.46.4
 PyMySQL==1.2.0

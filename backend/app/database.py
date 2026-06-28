@@ -6,7 +6,7 @@ import os
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+pymysql://root:Admin%40123@localhost:3306/titanic"
+    "mysql+pymysql://root:root@localhost:3307/predicted_history"
 )
 
 engine = create_engine(DATABASE_URL)

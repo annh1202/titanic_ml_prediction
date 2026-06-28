@@ -1,9 +1,11 @@
+import copy
+
 import joblib
 import pandas as pd
 import numpy as np
 import os
 
-MODEL_PATH        = os.getenv("MODEL_PATH",        "artifact/model.pkl")
+MODEL_PATH = os.getenv("MODEL_PATH", "artifact/model.pkl")
 PREPROCESSOR_PATH = os.getenv("PREPROCESSOR_PATH", "artifact/preprocessor.pkl")
 
 # Load model khi server khởi động
@@ -21,26 +23,22 @@ except (FileNotFoundError, EOFError, Exception) as e:
 def predict_survival(pclass: int, sex: str, age: float,
                      sibsp: int, parch: int, fare: float,
                      embarked: str) -> tuple[int, float]:
-    """
-    Nhận input của 1 hành khách, trả về (survived: 0|1, probability: float).
-    Pipeline trong model.pkl đã bao gồm preprocessor nên truyền raw data vào thẳng.
-    """
     if not MODEL_LOADED:
         raise RuntimeError("Model chưa được load. Chạy pipeline.py trước.")
 
-    # Tên cột phải khớp với X mà pipeline.py đã train
     df = pd.DataFrame([{
-        "Pclass":   pclass,
-        "Sex":      sex,
-        "Age":      age,
-        "SibSp":    sibsp,
-        "Parch":    parch,
-        "Fare":     fare,
-        "Embarked": embarked,
+        "Pclass": int(pclass),
+        "Sex": str(sex),
+        "Age": float(age),
+        "SibSp": int(sibsp),
+        "Parch": int(parch),
+        "Fare": float(fare),
+        "Embarked": str(embarked),
     }])
 
-    survived    = int(model.predict(df)[0])
+    survived = int(model.predict(df)[0])
     probability = float(model.predict_proba(df)[0][1])
+
     return survived, probability
 
 

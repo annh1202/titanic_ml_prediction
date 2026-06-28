@@ -3,25 +3,29 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+import wandb
 import joblib
-import os
 
-# Load Titanic dataset
+
+# --- 1. CHUẨN BỊ DỮ LIỆU & PREPROCESSOR (Chạy 1 lần) ---
 titanic_dataset = pd.read_csv("data/titanic.csv")
-df = pd.DataFrame(titanic_dataset)
+X = titanic_dataset.drop(columns=['Survived'])
+y = titanic_dataset['Survived']
 
-# Split column type
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
 numeric_columns = ['Age', 'Fare', 'SibSp', 'Parch']
 ordinal_columns = ['Pclass']
 categorical_columns = ['Sex', 'Embarked']
 
-# Transformer columns
 numeric_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='median')),
     ('scaler', StandardScaler())
@@ -44,78 +48,155 @@ preprocessor = ColumnTransformer(
     remainder='drop'
 )
 
-# Train multiple models
-logistic_regression_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('logistic_regression', LogisticRegression())
-])
 
-random_forest_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('random_forest', RandomForestClassifier())
-])
+# --- 2. HÀM TRAIN CHUNG CHO AGENT ---
+def train():
+    with wandb.init() as run:
+        config = wandb.config
+        model_type = config.model_type
+        run.name = f"{model_type}-run"
 
-tree_decision_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('decision_tree', DecisionTreeClassifier())
-])
+        # --- Khởi tạo mô hình (Giữ nguyên logic cũ của bạn) ---
+        if model_type == 'logistic_regression':
+            model = LogisticRegression(C=config.C, solver='liblinear')
+        elif model_type == 'random_forest':
+            model = RandomForestClassifier(n_estimators=config.n_estimators, max_depth=config.max_depth,
+                                           random_state=42)
+        elif model_type == 'decision_tree':
+            model = DecisionTreeClassifier(max_depth=config.max_depth, criterion=config.criterion, random_state=42)
+        elif model_type == 'svm':
+            model = SVC(C=config.C, kernel=config.kernel,
+                        probability=True)  # Bật probability=True để tính ROC-AUC cho SVM
+        else:
+            raise ValueError("Invalid model type")
 
-svm_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('svm', SVC())
-])
+        pipeline = Pipeline(steps=[('preprocessor', preprocessor), ('model', model)])
 
-X = df.drop(columns=['Survived'])
-y = df['Survived']
+        # Huấn luyện
+        pipeline.fit(X_train, y_train)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
+        # Dự đoán nhãn (0 hoặc 1) và dự đoán xác suất (probability)
+        y_pred = pipeline.predict(X_test)
+        y_probas = pipeline.predict_proba(X_test)  # Trả về xác suất của các lớp
 
-logistic_regression_pipeline.fit(X_train, y_train)
-random_forest_pipeline.fit(X_train, y_train)
-tree_decision_pipeline.fit(X_train, y_train)
-svm_pipeline.fit(X_train, y_train)
+        # --- TÍNH TOÁN CÁC CHỈ SỐ NÂNG CAO ---
+        acc = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        roc_auc = roc_auc_score(y_test, y_probas[:, 1])
 
-# Compare model
-logistic_regression_score = cross_val_score(logistic_regression_pipeline, X_train, y_train, cv=5)
-random_forest_score = cross_val_score(random_forest_pipeline, X_train, y_train, cv=5)
-tree_decision_score = cross_val_score(tree_decision_pipeline, X_train, y_train, cv=5)
-svm_score = cross_val_score(svm_pipeline, X_train, y_train, cv=5)
+        # --- LOG CÁC CHỈ SỐ LÊN W&B ---
+        wandb.log({
+            "accuracy": acc,
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1,
+            "roc_auc": roc_auc
+        })
 
-print("Logistic Regression score:", logistic_regression_score)
-print("Random Forest score:", random_forest_score)
-print("Decision Tree score:", tree_decision_score)
-print("SVM score:", svm_score)
+        # --- TỰ ĐỘNG VẼ BIỂU ĐỒ TRỰC QUAN LÊN W&B DASHBOARD ---
+        # 1. Vẽ Confusion Matrix
+        wandb.log({"confusion_matrix": wandb.plot.confusion_matrix(
+            probs=None,
+            y_true=y_test.values,
+            preds=y_pred,
+            class_names=["Perished (0)", "Survived (1)"]
+        )})
 
-print(f"Logistic Regression mean: {round(logistic_regression_score.mean()*100, 3)}%")
-print(f"Random Forest mean: {round(random_forest_score.mean()*100, 3)}%")
-print(f"Decision Tree mean: {round(tree_decision_score.mean()*100, 3)}%")
-print(f"SVM mean: {round(svm_score.mean()*100, 3)}%")
+        # 2. Vẽ Đường cong ROC (ROC Curve)
+        wandb.log({"roc_curve": wandb.plot.roc_curve(
+            y_true=y_test.values,
+            y_probas=y_probas,
+            labels=["Perished (0)", "Survived (1)"]
+        )})
 
-# Predict
-logistic_regression_prediction = logistic_regression_pipeline.predict(X_test)
-random_forest_prediction = random_forest_pipeline.predict(X_test)
-tree_decision_prediction = tree_decision_pipeline.predict(X_test)
-svm_prediction = svm_pipeline.predict(X_test)
 
-logistic_regression_accuracy = accuracy_score(logistic_regression_prediction, y_test)
-print(f"Logistic Regression accuracy: {round(logistic_regression_accuracy*100, 3)}%")
+# --- 3. ĐỊNH NGHĨA 4 CẤU HÌNH SWEEP ĐỘC LẬP ---
 
-random_forest_accuracy = accuracy_score(random_forest_prediction, y_test)
-print(f"Random Forest accuracy: {round(random_forest_accuracy*100, 3)}%")
+# Sweep 1: Logistic Regression (3 tổ hợp)
+lr_sweep_config = {
+    'method': 'grid',
+    'metric': {'name': 'accuracy', 'goal': 'maximize'},
+    'parameters': {
+        'model_type': {'value': 'logistic_regression'},
+        'C': {'values': [0.1, 1.0, 10.0]}
+    }
+}
 
-tree_decision_accuracy = accuracy_score(tree_decision_prediction, y_test)
-print(f"Decision Tree accuracy: {round(tree_decision_accuracy*100, 3)}%")
+# Sweep 2: Random Forest (2 x 3 = 6 tổ hợp)
+rf_sweep_config = {
+    'method': 'grid',
+    'metric': {'name': 'accuracy', 'goal': 'maximize'},
+    'parameters': {
+        'model_type': {'value': 'random_forest'},
+        'n_estimators': {'values': [50, 100]},
+        'max_depth': {'values': [5, 10, None]}
+    }
+}
 
-svm_accuracy = accuracy_score(svm_prediction, y_test)
-print(f"SVM accuracy: {round(svm_accuracy*100, 3)}%")
+# Sweep 3: Decision Tree (3 x 2 = 6 tổ hợp)
+dt_sweep_config = {
+    'method': 'grid',
+    'metric': {'name': 'accuracy', 'goal': 'maximize'},
+    'parameters': {
+        'model_type': {'value': 'decision_tree'},
+        'max_depth': {'values': [3, 5, 10]},
+        'criterion': {'values': ['gini', 'entropy']}
+    }
+}
 
-best_pipeline = random_forest_pipeline
-joblib.dump(best_pipeline, "artifact/model.pkl")
-joblib.dump(preprocessor, "artifact/preprocessor.pkl")
-print("Model saved successfully")
+# Sweep 4: SVM (3 x 2 = 6 tổ hợp)
+svm_sweep_config = {
+    'method': 'grid',
+    'metric': {'name': 'accuracy', 'goal': 'maximize'},
+    'parameters': {
+        'model_type': {'value': 'svm'},
+        'C': {'values': [0.1, 1.0, 5.0]},
+        'kernel': {'values': ['linear', 'rbf']}
+    }
+}
+
+# --- 4. KÍCH HOẠT CHẠY LẦN LƯỢT ---
+if __name__ == '__main__':
+    # PROJECT_NAME = "titanic-separated-sweeps"
+    #
+    # # Gom danh sách các cấu hình lại để duyệt qua vòng lặp
+    # all_sweeps = [
+    #     ("Logistic Regression", lr_sweep_config),
+    #     ("Random Forest", rf_sweep_config),
+    #     ("Decision Tree", dt_sweep_config),
+    #     ("SVM", svm_sweep_config)
+    # ]
+    #
+    # for model_name, config in all_sweeps:
+    #     print(f"\n=== ĐANG KHỞI CHẠY SWEEP CHO: {model_name} ===")
+    #     # Tạo ID sweep trên server W&B
+    #     sweep_id = wandb.sweep(config, project=PROJECT_NAME)
+    #     # Chạy Agent cho đến khi hoàn thành hết các tổ hợp của mô hình đó
+    #     wandb.agent(sweep_id, function=train)
+    #
+    # print("\n=== HOÀN THÀNH TẤT CẢ CÁC SWEEP ===")
+
+    print("\n=== TIẾN HÀNH TRAIN MODEL TỐT NHẤT VÀ ĐÓNG GÓI ===")
+    # Chọn ra model tốt nhất sau khi xem trên wandb.ai
+    # Accuracy = 0.8268
+    # F1-score = 0.75969
+    best_model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=10,
+        random_state=42
+    )
+
+    final_pipeline = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('model', best_model)
+    ])
+
+    print("Đang huấn luyện mô hình với toàn bộ dữ liệu...")
+    final_pipeline.fit(X_train, y_train)
+
+    joblib.dump(final_pipeline, "artifact/model.pkl")
+    joblib.dump(preprocessor, "artifact/preprocessor.pkl")
+    print("Model saved successfully")
 

@@ -22,7 +22,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # đổi thành URL React khi deploy
+    allow_origins=["http://localhost:3000"],   # đổi thành URL React khi deploy
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -98,8 +99,11 @@ def health():
 def predict(passenger: PassengerInput, db: Session = Depends(get_db)):
     """Dự đoán 1 hành khách — kết quả tự động lưu vào DB."""
     survived, proba = _do_predict(passenger)
+
     _save_record(db, passenger, survived, proba)
+
     db.commit()
+
     return _make_response(survived, proba)
 
 

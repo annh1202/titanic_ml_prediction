@@ -13,7 +13,7 @@ function Predict() {
     Embarked: ''
   });
 
-  // State lưu kết quả dự đoán
+  // State lưu kết quả dự đoán (gồm survived, probability, và message)
   const [prediction, setPrediction] = useState(null);
 
   // State loading
@@ -30,35 +30,40 @@ function Predict() {
   // Gửi dữ liệu sang FastAPI
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setLoading(true);
 
     try {
-
-      const response = await fetch('http://127.0.0.1:8000/predict', {
+      const response = await fetch('http://localhost:8000/predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-
         body: JSON.stringify({
-          Pclass: Number(formData.Pclass),
-          Sex: formData.Sex,
-          Age: Number(formData.Age),
-          SibSp: Number(formData.SibSp),
-          Parch: Number(formData.Parch),
-          Fare: Number(formData.Fare),
-          Embarked: formData.Embarked
+          pclass: Number(formData.Pclass),
+          sex: formData.Sex,
+          age: Number(formData.Age),
+          sibsp: Number(formData.SibSp),
+          parch: Number(formData.Parch),
+          fare: Number(formData.Fare),
+          embarked: formData.Embarked
         })
       });
 
       const data = await response.json();
 
-      console.log("Dữ liệu thô từ FastAPI trả về:", data);
+      if (!response.ok) {
+        console.error("Chi tiết lỗi từ FastAPI:", data);
+        alert("Có lỗi xảy ra, kiểm tra log F12 nhé!");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Dữ liệu thô thành công từ FastAPI:", data);
 
       setPrediction({
-        result: Number(data.prediction),
-        confidence: Number(data.confidence)
+        survived: Number(data.survived),
+        probability: Number(data.probability),
+        message: data.message
       });
 
     } catch (error) {
@@ -79,7 +84,6 @@ function Predict() {
         {/* Pclass */}
         <div style={styles.formGroup}>
           <label>Hạng vé</label>
-
           <select
             name="Pclass"
             value={formData.Pclass}
@@ -97,7 +101,6 @@ function Predict() {
         {/* Sex */}
         <div style={styles.formGroup}>
           <label>Giới tính</label>
-
           <select
             name="Sex"
             value={formData.Sex}
@@ -114,7 +117,6 @@ function Predict() {
         {/* Age */}
         <div style={styles.formGroup}>
           <label>Tuổi</label>
-
           <input
             type="number"
             name="Age"
@@ -128,7 +130,6 @@ function Predict() {
         {/* SibSp */}
         <div style={styles.formGroup}>
           <label>Số anh chị em/vợ chồng đi cùng</label>
-
           <input
             type="number"
             name="SibSp"
@@ -142,7 +143,6 @@ function Predict() {
         {/* Parch */}
         <div style={styles.formGroup}>
           <label>Số cha mẹ/con cái đi cùng</label>
-
           <input
             type="number"
             name="Parch"
@@ -156,7 +156,6 @@ function Predict() {
         {/* Fare */}
         <div style={styles.formGroup}>
           <label>Giá vé</label>
-
           <input
             type="number"
             step="1"
@@ -171,7 +170,6 @@ function Predict() {
         {/* Embarked */}
         <div style={styles.formGroup}>
           <label>Cảng lên tàu</label>
-
           <select
             name="Embarked"
             value={formData.Embarked}
@@ -192,20 +190,15 @@ function Predict() {
 
       </form>
 
-      {/* Kết quả */}
+      {/* Kết quả hiển thị */}
       {
         prediction !== null && (
           <div style={styles.resultBox}>
             <h2>
-              Kết quả:
-              {
-                Number(prediction.result) === 1
-                  ? ' Sống sót'
-                  : ' Không sống sót'
-              }
+              Kết quả: {prediction.message} {/* Tận dụng chuỗi chữ từ Backend */}
             </h2>
             <p style={styles.confidenceText}>
-              Độ tự tin: <strong>{ (prediction.confidence * 100).toFixed(2) }%</strong>
+              Độ tự tin: <strong>{ (prediction.probability * 100).toFixed(2) }%</strong>
             </p>
           </div>
         )
@@ -216,7 +209,6 @@ function Predict() {
 }
 
 const styles = {
-
   container: {
     maxWidth: '700px',
     margin: '40px auto',
@@ -225,31 +217,27 @@ const styles = {
     borderRadius: '10px',
     boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
   },
-
   title: {
     textAlign: 'center',
-    marginBottom: '30px'
+    color: '#7e22ce',
+    marginBottom: '40px'
   },
-
   form: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '20px'
   },
-
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px'
   },
-
   input: {
     padding: '12px',
     borderRadius: '6px',
     border: '1px solid #cccccc',
     fontSize: '16px'
   },
-
   button: {
     padding: '14px',
     border: 'none',
@@ -259,15 +247,17 @@ const styles = {
     fontSize: '16px',
     cursor: 'pointer'
   },
-
   resultBox: {
     marginTop: '30px',
     padding: '20px',
     borderRadius: '8px',
     backgroundColor: '#f3e8ff',
     textAlign: 'center'
+  },
+  confidenceText: {
+    fontSize: '16px',
+    color: '#333333'
   }
-
 };
 
 export default Predict;

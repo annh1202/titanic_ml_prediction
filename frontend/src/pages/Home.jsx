@@ -79,7 +79,7 @@ const styles = {
   },
   title: {
     fontSize: '32px',
-    color: '#08060d',
+    color: '#7e22ce',
     marginBottom: '15px',
     fontWeight: '800',
     letterSpacing: '-0.5px'
