@@ -1,145 +1,142 @@
 
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lịch sử dự đoán Titanic</title>
+import React from "react";
 
-    <style>
-        body{
-            font-family: Arial, sans-serif;
-            background-color:#f2f2f2;
-        }
+function History() {
+  return (
+    <div style={styles.container}>
 
-        .container{
-            width:850px;
-            margin:30px auto;
-            background:white;
-            padding:20px;
-            border:1px solid #ccc;
-        }
+      <h1 style={styles.title}>Lịch sử dự đoán Titanic</h1>
 
-        h1{
-            text-align:center;
-            color:#003366;
-        }
+      <p style={styles.text}>
+        Danh sách các lần dự đoán của người dùng
+      </p>
 
-        p{
-            text-align:center;
-            color:gray;
-        }
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            
+            <th style={styles.th}>Họ tên</th>
+            <th style={styles.th}>Giới tính</th>
+            <th style={styles.th}>Tuổi</th>
+            <th style={styles.th}>Hạng vé</th>
+            <th style={styles.th}>Kết quả</th>
+            <th style={styles.th}>Ngày dự đoán</th>
+          </tr>
+        </thead>
 
-        table{
-            width:100%;
-            border-collapse:collapse;
-            margin-top:20px;
-        }
+        <tbody>
 
-        th,td{
-            border:1px solid #ccc;
-            padding:10px;
-            text-align:center;
-        }
+          <tr>
+            <td style={styles.td}>Nguyễn Văn A</td>
+            <td style={styles.td}>Nam</td>
+            <td style={styles.td}>28</td>
+            <td style={styles.td}>Hạng 1</td>
+            <td style={{ ...styles.td, color: "green", fontWeight: "bold" }}>
+              Sống sót
+            </td>
+            <td style={styles.td}>15/04/1912</td>
+          </tr>
 
-        th{
-            background:#003366;
-            color:white;
-        }
+          <tr>
+            <td style={styles.td}>Trần Thị B</td>
+            <td style={styles.td}>Nữ</td>
+            <td style={styles.td}>30</td>
+            <td style={styles.td}>Hạng 3</td>
+            <td style={{ ...styles.td, color: "red", fontWeight: "bold" }}>
+              Không sống sót
+            </td>
+            <td style={styles.td}>16/04/1912</td>
+          </tr>
 
-        .song{
-            color:green;
-            font-weight:bold;
-        }
+          <tr>
+            <td style={styles.td}>Lê Văn C</td>
+            <td style={styles.td}>Nam</td>
+            <td style={styles.td}>35</td>
+            <td style={styles.td}>Hạng 2</td>
+            <td style={{ ...styles.td, color: "red", fontWeight: "bold" }}>
+              Không sống sót
+            </td>
+            <td style={styles.td}>15/04/1912</td>
+          </tr>
 
-        .chet{
-            color:red;
-            font-weight:bold;
-        }
+        </tbody>
+      </table>
 
-        .button{
-            text-align:center;
-            margin-top:20px;
-        }
+      <div style={styles.buttonBox}>
+        <button style={styles.newButton}>
+          Dự đoán mới
+        </button>
 
-        button{
-            padding:10px 20px;
-            border:none;
-            color:white;
-            cursor:pointer;
-            margin:5px;
-        }
+        <button style={styles.deleteButton}>
+          Xóa lịch sử
+        </button>
+      </div>
 
-        .btn-new{
-            background:#003366;
-        }
-
-        .btn-delete{
-            background:red;
-        }
-
-        button:hover{
-            opacity:0.8;
-        }
-    </style>
-
-</head>
-<body>
-
-<div class="container">
-
-    <h1>Dự đoán sống sót trên tàu Titanic</h1>
-
-    <p>Danh sách các lần dự đoán của người dùng</p>
-
-    <table>
-
-        <tr>
-            <th>STT</th>
-            <th>Họ tên</th>
-            <th>Giới tính</th>
-            <th>Tuổi</th>
-            <th>Hạng vé</th>
-            <th>Kết quả</th>
-            <th>Ngày dự đoán</th>
-        </tr>
-
-        <tr>
-            <td>Nguyễn Văn A</td>
-            <td>Nam</td>
-            <td>28</td>
-            <td>Hạng 1</td>
-            <td class="song">Sống sót</td>
-            <td>15/04/1912</td>
-        </tr>
-
-        <tr>
-            <td>Trần Thị B</td>
-            <td>Nữ</td>
-            <td>30</td>
-            <td>Hạng 3</td>
-            <td class="chet">Không sống sót</td>
-            <td>16/04/1912</td>
-        </tr>
-
-        <tr>
-            <td>Lê Văn C</td>
-            <td>Nam</td>
-            <td>35</td>
-            <td>Hạng 2</td>
-            <td class="chet">Không sống sót</td>
-            <td>15/04/1912</td>
-        </tr>
-
-    </table>
-
-    <div class="button">
-        <button class="btn-new">Dự đoán mới</button>
-        <button class="btn-delete">Xóa lịch sử</button>
     </div>
+  );
+}
 
-</div>
+const styles = {
 
-</body>
-</html>
+  container: {
+    width: "850px",
+    margin: "30px auto",
+    backgroundColor: "#ffffff",
+    padding: "20px",
+    border: "1px solid #cccccc"
+  },
 
+  title: {
+    textAlign: "center",
+    color: "#003366"
+  },
+
+  text: {
+    textAlign: "center",
+    color: "gray"
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "20px"
+  },
+
+  th: {
+    border: "1px solid #cccccc",
+    padding: "10px",
+    backgroundColor: "#003366",
+    color: "white"
+  },
+
+  td: {
+    border: "1px solid #cccccc",
+    padding: "10px",
+    textAlign: "center"
+  },
+
+  buttonBox: {
+    textAlign: "center",
+    marginTop: "20px"
+  },
+
+  newButton: {
+    padding: "10px 20px",
+    marginRight: "10px",
+    backgroundColor: "#003366",
+    color: "white",
+    border: "none",
+    cursor: "pointer"
+  },
+
+  deleteButton: {
+    padding: "10px 20px",
+    backgroundColor: "red",
+    color: "white",
+    border: "none",
+    cursor: "pointer"
+  }
+
+};
+
+export default History;
