@@ -15,7 +15,7 @@ function Home() {
     {
       title: 'Thông Tin Mô Hình',
       description: 'Xem chi tiết cấu trúc mô hình, các tham số huấn luyện (hyperparameters), độ chính xác (Accuracy, F1-Score) và biểu đồ đánh giá.',
-      path: '/model_info',
+      path: '/model-info',
       color: '#00b4d8'
     },
     {
