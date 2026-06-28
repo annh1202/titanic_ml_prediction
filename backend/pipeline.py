@@ -9,9 +9,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+import joblib
+import os
 
 # Load Titanic dataset
-titanic_dataset = pd.read_csv("dataset/raw/titanic.csv")
+titanic_dataset = pd.read_csv("data/titanic.csv")
 df = pd.DataFrame(titanic_dataset)
 
 # Split column type
@@ -89,7 +91,7 @@ print("Random Forest score:", random_forest_score)
 print("Decision Tree score:", tree_decision_score)
 print("SVM score:", svm_score)
 
-print(f"Logistic Regression mean: {round(random_forest_score.mean()*100, 3)}%")
+print(f"Logistic Regression mean: {round(logistic_regression_score.mean()*100, 3)}%")
 print(f"Random Forest mean: {round(random_forest_score.mean()*100, 3)}%")
 print(f"Decision Tree mean: {round(tree_decision_score.mean()*100, 3)}%")
 print(f"SVM mean: {round(svm_score.mean()*100, 3)}%")
@@ -111,4 +113,9 @@ print(f"Decision Tree accuracy: {round(tree_decision_accuracy*100, 3)}%")
 
 svm_accuracy = accuracy_score(svm_prediction, y_test)
 print(f"SVM accuracy: {round(svm_accuracy*100, 3)}%")
+
+best_pipeline = random_forest_pipeline
+joblib.dump(best_pipeline, "artifact/model.pkl")
+joblib.dump(preprocessor, "artifact/preprocessor.pkl")
+print("Model saved successfully")
 
