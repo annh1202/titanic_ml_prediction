@@ -56,11 +56,27 @@ function Predict() {
 
       console.log("Dữ liệu thô từ FastAPI trả về:", data);
 
+      const resVal = Number(data.prediction);
+      const confVal = Number(data.confidence);
+
       setPrediction({
         result: Number(data.prediction),
         confidence: Number(data.confidence)
       });
 
+      const localHistory = JSON.parse(localStorage.getItem('titanic_history') || '[]');
+      const newHistoryItem = {
+          Pclass: formData.Pclass,
+          Sex: formData.Sex,
+          Age: formData.Age,
+          Fare: formData.Fare,
+          Embarked: formData.Embarked
+          prediction: resVal,
+          confidence: confVal,
+        timestamp: new Date().toLocaleString()      
+      };
+      localStorage.setItem('titanic_history', JSON.stringify([newHistoryItem, ...localHistory]));
+      
     } catch (error) {
       console.error(error);
       alert('Lỗi kết nối đến FastAPI');
