@@ -70,7 +70,6 @@ function History() {
 
           {
             history.length === 0 ?
-
               (
                 <tr>
                   <td
@@ -80,9 +79,7 @@ function History() {
                  </td>
                 </tr>
               )
-
               :
-
               history.map((item, index) => (
 
                 <tr key={index}>
@@ -119,38 +116,29 @@ function History() {
                   >
                     {item.result}
                   </td>
-
                   <td style={styles.td}>
                     {item.date}
                   </td>
-
                 </tr>
-
               ))
           }
-
         </tbody>
-
       </table>
 
       <div style={styles.buttonBox}>
-
         <button
           style={styles.newButton}
           onClick={() => navigate("/predict")}
-        >
-          Dự đoán mới
+        > Dự đoán mới
         </button>
 
         <button
           style={styles.deleteButton}
           onClick={deleteHistory}
-        >
-          Xóa lịch sử
+        >  Xóa lịch sử
         </button>
 
       </div>
-
     </div>
   );
 
