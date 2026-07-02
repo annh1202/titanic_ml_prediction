@@ -1,0 +1,47 @@
+{
+  "model_version": "1.0.0",
+  "data_version": "titanic-kaggle-v1",
+  "data_source": "dataset/raw/titanic.csv",
+  "data_shape": {
+    "train_rows": 712,
+    "test_rows": 179,
+    "features": [
+      "PassengerId",
+      "Pclass",
+      "Name",
+      "Sex",
+      "Age",
+      "SibSp",
+      "Parch",
+      "Ticket",
+      "Fare",
+      "Cabin",
+      "Embarked"
+    ]
+  },
+  "best_model": "SVM",
+  "model_class": "SVC",
+  "evaluation": {
+    "Logistic Regression": {
+      "cv_mean": 0.7978,
+      "cv_std": 0.0204,
+      "accuracy": 0.8045
+    },
+    "Random Forest": {
+      "cv_mean": 0.7979,
+      "cv_std": 0.0439,
+      "accuracy": 0.7989
+    },
+    "Decision Tree": {
+      "cv_mean": 0.7726,
+      "cv_std": 0.0416,
+      "accuracy": 0.8212
+    },
+    "SVM": {
+      "cv_mean": 0.8147,
+      "cv_std": 0.0174,
+      "accuracy": 0.8268
+    }
+  },
+  "trained_at": "2026-07-01T11:28:02.612478"
+}

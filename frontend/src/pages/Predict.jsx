@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import { predictOne } from '../api/titanicApi';
+import { FaUser, FaTicketAlt, FaVenusMars, FaChild, FaUsers, FaMoneyBillWave, FaMapMarkerAlt } from 'react-icons/fa';
 
 function Predict() {
-
-  // State lưu dữ liệu form
   const [formData, setFormData] = useState({
     Pclass: '',
     Sex: '',
@@ -13,13 +13,9 @@ function Predict() {
     Embarked: ''
   });
 
-  // State lưu kết quả dự đoán
   const [prediction, setPrediction] = useState(null);
-
-  // State loading
   const [loading, setLoading] = useState(false);
 
-  // Xử lý thay đổi input
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -27,10 +23,8 @@ function Predict() {
     });
   };
 
-  // Gửi dữ liệu sang FastAPI
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setLoading(true);
 
     try {
@@ -60,8 +54,9 @@ function Predict() {
       const confVal = Number(data.confidence);
 
       setPrediction({
-        result: Number(data.prediction),
-        confidence: Number(data.confidence)
+        result: data.survived,
+        confidence: data.probability,
+        message: data.message
       });
 
       const localHistory = JSON.parse(localStorage.getItem('titanic_history') || '[]');
@@ -79,154 +74,149 @@ function Predict() {
       
     } catch (error) {
       console.error(error);
-      alert('Lỗi kết nối đến FastAPI');
+      alert('Lỗi kết nối đến FastAPI. Vui lòng kiểm tra console.');
     }
 
     setLoading(false);
   };
 
   return (
-    <div style={styles.container}>
+    <div className="container page-wrapper page-center">
+      <div className="form-container glass-panel" style={{ width: '100%' }}>
+        <h1 className="form-title">Dự Đoán Sống Sót</h1>
 
-      <h1 style={styles.title}>Dự đoán sống sót Titanic</h1>
+        <form onSubmit={handleSubmit} className="form-grid">
+          {/* Pclass */}
+          <div className="form-group">
+            <label className="form-label"><FaTicketAlt /> Hạng vé</label>
+            <select
+              name="Pclass"
+              value={formData.Pclass}
+              onChange={handleChange}
+              required
+              className="form-control"
+            >
+              <option value="">-- Chọn hạng vé --</option>
+              <option value="1">Hạng 1 (Thương gia)</option>
+              <option value="2">Hạng 2 (Phổ thông đặc biệt)</option>
+              <option value="3">Hạng 3 (Phổ thông)</option>
+            </select>
+          </div>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
+          {/* Sex */}
+          <div className="form-group">
+            <label className="form-label"><FaVenusMars /> Giới tính</label>
+            <select
+              name="Sex"
+              value={formData.Sex}
+              onChange={handleChange}
+              required
+              className="form-control"
+            >
+              <option value="">-- Chọn giới tính --</option>
+              <option value="male">Nam</option>
+              <option value="female">Nữ</option>
+            </select>
+          </div>
 
-        {/* Pclass */}
-        <div style={styles.formGroup}>
-          <label>Hạng vé</label>
+          {/* Age */}
+          <div className="form-group">
+            <label className="form-label"><FaUser /> Tuổi</label>
+            <input
+              type="number"
+              name="Age"
+              value={formData.Age}
+              onChange={handleChange}
+              required
+              min="0"
+              max="120"
+              step="0.1"
+              placeholder="VD: 25"
+              className="form-control"
+            />
+          </div>
 
-          <select
-            name="Pclass"
-            value={formData.Pclass}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          >
-            <option value="">-- Chọn hạng vé --</option>
-            <option value="1">Hạng 1</option>
-            <option value="2">Hạng 2</option>
-            <option value="3">Hạng 3</option>
-          </select>
-        </div>
+          {/* SibSp */}
+          <div className="form-group">
+            <label className="form-label"><FaUsers /> Số anh chị em / Vợ chồng</label>
+            <input
+              type="number"
+              name="SibSp"
+              value={formData.SibSp}
+              onChange={handleChange}
+              required
+              min="0"
+              placeholder="VD: 1"
+              className="form-control"
+            />
+          </div>
 
-        {/* Sex */}
-        <div style={styles.formGroup}>
-          <label>Giới tính</label>
+          {/* Parch */}
+          <div className="form-group">
+            <label className="form-label"><FaChild /> Số cha mẹ / Con cái</label>
+            <input
+              type="number"
+              name="Parch"
+              value={formData.Parch}
+              onChange={handleChange}
+              required
+              min="0"
+              placeholder="VD: 0"
+              className="form-control"
+            />
+          </div>
 
-          <select
-            name="Sex"
-            value={formData.Sex}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          >
-            <option value="">-- Chọn giới tính --</option>
-            <option value="male">Nam</option>
-            <option value="female">Nữ</option>
-          </select>
-        </div>
+          {/* Fare */}
+          <div className="form-group">
+            <label className="form-label"><FaMoneyBillWave /> Giá vé</label>
+            <input
+              type="number"
+              step="0.01"
+              name="Fare"
+              value={formData.Fare}
+              onChange={handleChange}
+              required
+              min="0"
+              placeholder="VD: 30.5"
+              className="form-control"
+            />
+          </div>
 
-        {/* Age */}
-        <div style={styles.formGroup}>
-          <label>Tuổi</label>
+          {/* Embarked */}
+          <div className="form-group">
+            <label className="form-label"><FaMapMarkerAlt /> Cảng lên tàu</label>
+            <select
+              name="Embarked"
+              value={formData.Embarked}
+              onChange={handleChange}
+              required
+              className="form-control"
+            >
+              <option value="">-- Chọn cảng --</option>
+              <option value="C">Cherbourg (C)</option>
+              <option value="Q">Queenstown (Q)</option>
+              <option value="S">Southampton (S)</option>
+            </select>
+          </div>
 
-          <input
-            type="number"
-            name="Age"
-            value={formData.Age}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-        </div>
+          <div className="form-group" style={{ gridColumn: '1 / -1', marginTop: '16px' }}>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Đang phân tích...' : 'Dự Đoán Ngay'}
+            </button>
+          </div>
+        </form>
 
-        {/* SibSp */}
-        <div style={styles.formGroup}>
-          <label>Số anh chị em/vợ chồng đi cùng</label>
-
-          <input
-            type="number"
-            name="SibSp"
-            value={formData.SibSp}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-        </div>
-
-        {/* Parch */}
-        <div style={styles.formGroup}>
-          <label>Số cha mẹ/con cái đi cùng</label>
-
-          <input
-            type="number"
-            name="Parch"
-            value={formData.Parch}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-        </div>
-
-        {/* Fare */}
-        <div style={styles.formGroup}>
-          <label>Giá vé</label>
-
-          <input
-            type="number"
-            step="1"
-            name="Fare"
-            value={formData.Fare}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-        </div>
-
-        {/* Embarked */}
-        <div style={styles.formGroup}>
-          <label>Cảng lên tàu</label>
-
-          <select
-            name="Embarked"
-            value={formData.Embarked}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          >
-            <option value="">-- Chọn cảng --</option>
-            <option value="C">Cherbourg</option>
-            <option value="Q">Queenstown</option>
-            <option value="S">Southampton</option>
-          </select>
-        </div>
-
-        <button type="submit" style={{...styles.button, gridColumn: 'span 2'}}>
-          {loading ? 'Đang dự đoán...' : 'Dự đoán'}
-        </button>
-
-      </form>
-
-      {/* Kết quả */}
-      {
-        prediction !== null && (
-          <div style={styles.resultBox}>
-            <h2>
-              Kết quả:
-              {
-                Number(prediction.result) === 1
-                  ? ' Sống sót'
-                  : ' Không sống sót'
-              }
+        {prediction && (
+          <div className={`result-box ${prediction.result === 1 ? 'survived' : 'perished'}`}>
+            <h2 className="result-title">
+              {prediction.result === 1 ? 'Khả năng sống sót cao!' : 'Khả năng không sống sót'}
             </h2>
-            <p style={styles.confidenceText}>
-              Độ tự tin: <strong>{ (prediction.confidence * 100).toFixed(2) }%</strong>
+            <p className="result-confidence">
+              Độ tự tin của mô hình: <strong>{(prediction.confidence * 100).toFixed(2)}%</strong>
             </p>
           </div>
-        )
-      }
-
+        )}
+      </div>
     </div>
   );
 }

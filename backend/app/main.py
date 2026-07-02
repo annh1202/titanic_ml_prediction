@@ -1,11 +1,18 @@
+import sys
+import os
+import uvicorn
+
+# Add the backend directory to sys.path so 'app' is recognized as a package
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from .database import get_db, init_db, PredictionRecord
-from .model import predict_survival, get_model_info, MODEL_LOADED
-from .schemes import (
+from app.database import get_db, init_db, PredictionRecord
+from app.model import predict_survival, get_model_info, MODEL_LOADED
+from app.schemes import (
     PassengerInput, PredictionResponse,
     BatchRequest, BatchResponse,
     HistoryResponse, HistoryItem,
@@ -171,3 +178,6 @@ def compare_model():
         best_model=best.model,
         note="Số liệu từ cross_val_score 5-fold. Cập nhật sau khi chạy pipeline.py.",
     )
+
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
