@@ -15,10 +15,9 @@ function Home() {
     },
     {
       title: 'Thông Tin Mô Hình',
-      description: 'Xem chi tiết cấu trúc mô hình, các tham số huấn luyện (hyperparameters), độ chính xác và biểu đồ đánh giá.',
+      description: 'Xem chi tiết cấu trúc mô hình, các tham số huấn luyện (hyperparameters), độ chính xác (Accuracy, F1-Score) và biểu đồ đánh giá.',
       path: '/model-info',
-      color: 'var(--info)',
-      icon: <FaRobot />
+      color: '#00b4d8'
     },
     {
       title: 'Lịch Sử Dự Đoán',
@@ -70,5 +69,81 @@ function Home() {
     </div>
   );
 }
+
+// Hệ thống CSS Inline
+const styles = {
+  container: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '60px 20px',
+    fontFamily: 'system-ui, -apple-system, sans-serif'
+  },
+  hero: {
+    textAlign: 'center',
+    marginBottom: '60px'
+  },
+  title: {
+    fontSize: '32px',
+    color: '#08060d',
+    marginBottom: '15px',
+    fontWeight: '800',
+    letterSpacing: '-0.5px'
+  },
+  subtitle: {
+    fontSize: '16px',
+    color: '#666',
+    maxWidth: '600px',
+    margin: '0 auto',
+    lineHeight: '1.6'
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '25px',
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: '8px',
+    padding: '30px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+    border: '1px solid #e1e1e1',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    position: 'relative',
+    overflow: 'hidden' // Để bo góc phần thanh màu topBar
+  },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '4px'
+  },
+  cardTitle: {
+    fontSize: '18px',
+    color: '#08060d',
+    margin: '10px 0 12px 0',
+    fontWeight: '700'
+  },
+  cardDescription: {
+    fontSize: '14px',
+    color: '#555',
+    lineHeight: '1.6',
+    marginBottom: '25px',
+    flexGrow: 1
+  },
+  button: {
+    padding: '10px 18px',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    fontSize: '14px',
+    width: '100%',
+    textAlign: 'center'
+  }
+};
 
 export default Home;

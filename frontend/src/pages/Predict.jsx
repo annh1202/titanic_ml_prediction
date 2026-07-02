@@ -28,24 +28,50 @@ function Predict() {
     setLoading(true);
 
     try {
-      const payload = {
-        pclass: Number(formData.Pclass),
-        sex: formData.Sex,
-        age: Number(formData.Age),
-        sibsp: Number(formData.SibSp),
-        parch: Number(formData.Parch),
-        fare: Number(formData.Fare),
-        embarked: formData.Embarked
-      };
-      
-      const response = await predictOne(payload);
-      const data = response.data;
-      
+
+      const response = await fetch('http://127.0.0.1:8000/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+          Pclass: Number(formData.Pclass),
+          Sex: formData.Sex,
+          Age: Number(formData.Age),
+          SibSp: Number(formData.SibSp),
+          Parch: Number(formData.Parch),
+          Fare: Number(formData.Fare),
+          Embarked: formData.Embarked
+        })
+      });
+
+      const data = await response.json();
+
+      console.log("Dữ liệu thô từ FastAPI trả về:", data);
+
+      const resVal = Number(data.prediction);
+      const confVal = Number(data.confidence);
+
       setPrediction({
         result: data.survived,
         confidence: data.probability,
         message: data.message
       });
+
+      const localHistory = JSON.parse(localStorage.getItem('titanic_history') || '[]');
+      const newHistoryItem = {
+          Pclass: formData.Pclass,
+          Sex: formData.Sex,
+          Age: formData.Age,
+          Fare: formData.Fare,
+          Embarked: formData.Embarked
+          prediction: resVal,
+          confidence: confVal,
+        timestamp: new Date().toLocaleString()      
+      };
+      localStorage.setItem('titanic_history', JSON.stringify([newHistoryItem, ...localHistory]));
+      
     } catch (error) {
       console.error(error);
       alert('Lỗi kết nối đến FastAPI. Vui lòng kiểm tra console.');
@@ -194,5 +220,60 @@ function Predict() {
     </div>
   );
 }
+
+const styles = {
+
+  container: {
+    maxWidth: '700px',
+    margin: '40px auto',
+    padding: '30px',
+    backgroundColor: '#ffffff',
+    borderRadius: '10px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+  },
+
+  title: {
+    textAlign: 'center',
+    marginBottom: '30px'
+  },
+
+  form: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '20px'
+  },
+
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+
+  input: {
+    padding: '12px',
+    borderRadius: '6px',
+    border: '1px solid #cccccc',
+    fontSize: '16px'
+  },
+
+  button: {
+    padding: '14px',
+    border: 'none',
+    borderRadius: '6px',
+    backgroundColor: '#aa3bff',
+    color: 'white',
+    fontSize: '16px',
+    cursor: 'pointer'
+  },
+
+  resultBox: {
+    marginTop: '30px',
+    padding: '20px',
+    borderRadius: '8px',
+    backgroundColor: '#f3e8ff',
+    textAlign: 'center'
+  }
+
+};
 
 export default Predict;
