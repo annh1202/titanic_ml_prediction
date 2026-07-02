@@ -214,4 +214,10 @@ const styles = {
 
 };
 
+    
+
+    
+
+    ) 
+}
 export default ModelInfo;

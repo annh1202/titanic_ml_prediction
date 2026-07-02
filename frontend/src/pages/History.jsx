@@ -3,44 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 function History() {
 
-  const navigate = useNavigate();
-
-  const [history, setHistory] = useState([
-    {
-      name: "Nguyễn Văn A",
-      sex: "Nam",
-      age: 28,
-      pclass: "Hạng 1",
-      result: "Sống sót",
-      date: "15/04/1912"
-    },
-    {
-      name: "Trần Thị B",
-      sex: "Nữ",
-      age: 30,
-      pclass: "Hạng 3",
-      result: "Không sống sót",
-      date: "16/04/1912"
-    },
-    {
-      name: "Lê Văn C",
-      sex: "Nam",
-      age: 35,
-      pclass: "Hạng 2",
-      result: "Không sống sót",
-      date: "15/04/1912"
-    }
-  ]);
-
-  const deleteHistory = () => {
-
-    const check = window.confirm("Bạn có muốn xóa toàn bộ lịch sử không?");
-
-    if (check) {
-      setHistory([]);
-    }
-
-  };
+  
 
   return (
     <div style={styles.container}>
