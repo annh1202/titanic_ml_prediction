@@ -30,13 +30,13 @@ function PredictFromFile() {
 
         // Ép kiểu dữ liệu
         const record = {
-          Pclass: parseInt(columns[0]),
-          Sex: columns[1],
-          Age: Number(columns[2]) || 25,
-          SibSp: parseInt(columns[3]) || 0,
-          Parch: parseInt(columns[4]) || 0,
-          Fare: Number(columns[5]) || 15.0,
-          Embarked: columns[6]
+          pclass: parseInt(columns[0]),
+          sex: columns[1],
+          age: Number(columns[2]) || 25,
+          sibsp: parseInt(columns[3]) || 0,
+          parch: parseInt(columns[4]) || 0,
+          fare: Number(columns[5]) || 15.0,
+          embarked: columns[6]
         };
 
         try {
@@ -51,7 +51,7 @@ function PredictFromFile() {
           // Thêm kết quả vào mảng tạm kèm chung với data gốc để render ra bảng
           outputList.push({ 
             ...record, 
-            statusText: Number(serverRes.prediction) === 1 ? 'Sống sót' : 'Không sống sót' 
+            statusText: serverRes.survived === 1 ? 'Sống sót' : 'Không sống sót' 
           });
         } catch (err) {
           outputList.push({ ...record, statusText: 'Lỗi kết nối' });
@@ -63,6 +63,18 @@ function PredictFromFile() {
     };
 
     reader.readAsText(file);
+  };
+
+  const downloadSampleCSV = () => {
+    const csvContent = "Pclass,Sex,Age,SibSp,Parch,Fare,Embarked\n3,male,22,1,0,7.25,S\n1,female,38,1,0,71.2833,C\n3,female,26,0,0,7.925,S";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "titanic_sample.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -83,6 +95,13 @@ function PredictFromFile() {
           style={styles.fileInput} 
         />
         {loading && <p style={styles.loadingText}>Đang xử lý dữ liệu và kết nối tuần tự...</p>}
+      </div>
+
+      {/* Tải File Mẫu */}
+      <div style={{ textAlign: 'center', marginTop: '15px' }}>
+        <button type="button" onClick={downloadSampleCSV} style={styles.downloadButton}>
+          Tải File CSV Mẫu
+        </button>
       </div>
 
       {/* Bảng kết quả hiển thị */}
@@ -148,6 +167,16 @@ const styles = {
   fileInput: {
     fontSize: '16px',
     cursor: 'pointer'
+  },
+  downloadButton: {
+    padding: '10px 20px',
+    backgroundColor: '#aa3bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold'
   },
   loadingText: {
     color: '#aa3bff',

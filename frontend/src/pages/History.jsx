@@ -2,8 +2,15 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function History() {
+  const navigate = useNavigate();
+  const [history, setHistory] = useState(() => {
+    return JSON.parse(localStorage.getItem("titanic_history") || "[]");
+  });
 
-  
+  const deleteHistory = () => {
+    localStorage.removeItem("titanic_history");
+    setHistory([]);
+  };
 
   return (
     <div style={styles.container}>

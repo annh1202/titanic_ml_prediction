@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import os
 
-MODEL_PATH        = os.getenv("MODEL_PATH",        "artifact/model.pkl")
-PREPROCESSOR_PATH = os.getenv("PREPROCESSOR_PATH", "artifact/preprocessor.pkl")
+MODEL_PATH        = os.getenv("MODEL_PATH",        "artifacts/model.pkl")
+PREPROCESSOR_PATH = os.getenv("PREPROCESSOR_PATH", "artifacts/preprocessor.pkl")
 
 # Load model khi server khởi động
 try:
