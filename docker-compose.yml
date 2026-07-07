@@ -1,23 +1,30 @@
-version: '3.8'
-
 services:
   backend:
     build: ./backend
-    container_name: fastapi_backend
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
     environment:
-      - ENV=development
+      - DATABASE_URL=mysql+pymysql://root:Admin%40123@db:3306/titanic
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
-    container_name: react_frontend
     ports:
       - "3000:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
+
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: Admin@123
+      MYSQL_DATABASE: titanic
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pAdmin@123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

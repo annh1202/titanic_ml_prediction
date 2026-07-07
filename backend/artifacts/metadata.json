@@ -28,14 +28,14 @@
       "accuracy": 0.8045
     },
     "Random Forest": {
-      "cv_mean": 0.7909,
-      "cv_std": 0.051,
-      "accuracy": 0.7989
+      "cv_mean": 0.7923,
+      "cv_std": 0.0559,
+      "accuracy": 0.8156
     },
     "Decision Tree": {
-      "cv_mean": 0.7726,
-      "cv_std": 0.0363,
-      "accuracy": 0.8212
+      "cv_mean": 0.7627,
+      "cv_std": 0.0341,
+      "accuracy": 0.8156
     },
     "SVM": {
       "cv_mean": 0.8147,
@@ -43,5 +43,5 @@
       "accuracy": 0.8268
     }
   },
-  "trained_at": "2026-07-03T15:06:34.485938"
+  "trained_at": "2026-07-05T17:33:36.000272"
 }
