@@ -1,199 +1,305 @@
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder, MinMaxScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from datetime import datetime
+import wandb
 import joblib
 import os
-import json
 
-# Load Titanic dataset
+
+class GroupMedianImputer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.local_medians = {}
+        self.global_median = None
+
+    def fit(self, X, y=None):
+        X_df = pd.DataFrame(X).copy()
+
+        if "Name" in X_df.columns:
+            titles = X_df["Name"].str.extract(r" ([A-Za-z]+)\.", expand=False)
+            X_df["Title"] = titles
+            # Tính toán giá trị median của Age theo từng Title dựa trên tập Train
+            self.local_medians = X_df.groupby("Title")["Age"].median().to_dict()
+        
+        self.global_median = X_df["Age"].median()
+        return self
+
+    def transform(self, X):
+        X_df = pd.DataFrame(X).copy()
+        
+        if "Name" in X_df.columns:
+            titles = X_df["Name"].str.extract(r" ([A-Za-z]+)\.", expand=False)
+            # Điền khuyết theo nhóm Title đã học từ tập Train
+            X_df["Age"] = X_df["Age"].fillna(titles.map(self.local_medians))
+            
+        # Phòng trường hợp Title lạ ở tập Test chưa có trong Train, điền bằng global_median
+        X_df["Age"] = X_df["Age"].fillna(self.global_median)
+
+        # Trả về các cột numeric sau khi đã xử lý xong cột Age
+        return X_df[["Age"]]
+
+
+class FareQuartileImputer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        # Khởi tạo các mốc phân đoạn sẽ học được từ tập Train
+        self.q1 = None
+        self.q2 = None
+        self.q3 = None
+
+    def fit(self, X, y=None):
+        X_df = pd.DataFrame(X).copy()
+
+        # 1. Trích xuất cột Fare đầu tiên và điền khuyết bằng trung vị (phòng hờ dữ liệu NaN)
+        fare_series = X_df.iloc[:, 0]
+        global_median = fare_series.median()
+        fare_clean = fare_series.fillna(global_median)
+
+        # 2. CHUYỂN THÀNH LIST VÀ SẮP XẾP TĂNG DẦN (Thuật toán thủ công)
+        sorted_fare = sorted(fare_clean.tolist())
+        N = len(sorted_fare)
+
+        # 3. TÍNH VỊ TRÍ INDEX CHO TỪNG TỨ PHÂN VỊ
+        # Trừ 1 ở cuối công thức để khớp với Index chạy từ 0 trong Python list
+        idx_q1 = int(0.25 * (N + 1)) - 1
+        idx_q2 = int(0.50 * (N + 1)) - 1
+        idx_q3 = int(0.75 * (N + 1)) - 1
+
+        # Giới hạn index không vượt quá độ dài mảng (phòng trường hợp mảng quá ngắn)
+        idx_q1 = max(0, min(idx_q1, N - 1))
+        idx_q2 = max(0, min(idx_q2, N - 1))
+        idx_q3 = max(0, min(idx_q3, N - 1))
+
+        # 4. LƯU LẠI GIÁ TRỊ CÁC MỐC QUARTILE HỌC ĐƯỢC
+        self.q1 = sorted_fare[idx_q1]
+        self.q2 = sorted_fare[idx_q2]
+        self.q3 = sorted_fare[idx_q3]
+
+        return self
+
+    def transform(self, X):
+        X_df = pd.DataFrame(X).copy()
+        fare_series = X_df.iloc[:, 0]
+
+        # Hàm phân loại thủ công dựa trên các mốc Q1, Q2, Q3 đã học
+        def classify_fare(fare):
+            # Nếu gặp giá trị khuyết ở tập Test, tạm xếp vào nhóm rẻ nhất hoặc nhóm 0
+            if pd.isna(fare):
+                return 0
+            if fare <= self.q1:
+                return 0  # Nhóm vé siêu rẻ
+            elif fare <= self.q2:
+                return 1  # Nhóm vé trung bình thấp
+            elif fare <= self.q3:
+                return 2  # Nhóm vé trung bình cao
+            else:
+                return 3  # Nhóm vé thương gia / hạng sang
+
+        # Áp dụng hàm phân loại lên toàn bộ cột Fare
+        fare_binned = fare_series.apply(classify_fare)
+
+        # Trả về dưới dạng DataFrame 2D theo đúng chuẩn đầu ra của Scikit-Learn
+        return pd.DataFrame(fare_binned)
+
+
+# --- 1. CHUẨN BỊ DỮ LIỆU & PREPROCESSOR ---
 titanic_dataset = pd.read_csv("data/titanic.csv")
-df = pd.DataFrame(titanic_dataset)
+X = titanic_dataset.drop(columns=["Survived"])
+y = titanic_dataset["Survived"]
 
-# Split column type
-numeric_columns = ['Age', 'Fare', 'SibSp', 'Parch']
-ordinal_columns = ['Pclass']
-categorical_columns = ['Sex', 'Embarked']
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
 
-# Transformer columns
-numeric_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='median')),
-    ('scaler', StandardScaler())
+age_transformer = Pipeline(steps=[
+    ("age_imputer", GroupMedianImputer()),
+    ("age_scaler", StandardScaler())
 ])
+
+
+fare_transformer = Pipeline(steps=[
+    ("fare_imputer", FareQuartileImputer())
+])
+
+
+other_numeric_transformer = Pipeline(steps=[
+    ("num_imputer", SimpleImputer(strategy="median")),
+    ("num_scaler", MinMaxScaler())
+])
+
+
 ordinal_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('ordinal', OrdinalEncoder(categories=[[1, 2, 3]]))
+    ("ordinal_imputer", SimpleImputer(strategy="most_frequent")),
+    ("ordinal", OrdinalEncoder(
+        categories=[[1, 2, 3]],
+        handle_unknown="use_encoded_value",
+        unknown_value=-1))
 ])
+
+
 categorical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('onehot', OneHotEncoder(drop='first', handle_unknown='ignore'))
+    ("cate_imputer", SimpleImputer(strategy="most_frequent")),
+    ("onehot", OneHotEncoder(drop="first", handle_unknown="ignore", sparse_output=False))
 ])
+
 
 preprocessor = ColumnTransformer(
     transformers=[
-        ('numeric', numeric_transformer, numeric_columns),
-        ('ordinal', ordinal_transformer, ordinal_columns),
-        ('categorical', categorical_transformer, categorical_columns)
+        ("age", age_transformer, ["Age", "Name"]),
+        ("fare", fare_transformer, ["Fare"]),
+        ("other_num", other_numeric_transformer, ["SibSp", "Parch"]),
+        ("ordinal", ordinal_transformer, ["Pclass"]),
+        ("categorical", categorical_transformer, ["Sex", "Embarked"]),
     ],
-    remainder='drop'
+    remainder="drop",
 )
 
-# Train multiple models
-logistic_regression_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('logistic_regression', LogisticRegression())
-])
 
-random_forest_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('random_forest', RandomForestClassifier())
-])
+# --- 2. HÀM TRAIN CHUNG CHO AGENT ---
+def train():
+    with wandb.init() as run:
+        config = wandb.config
+        model_type = config.model_type
+        run.name = f"{model_type}-run"
 
-tree_decision_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('decision_tree', DecisionTreeClassifier())
-])
+        if model_type == "logistic_regression":
+            model = LogisticRegression(C=config.C, solver="liblinear")
+        elif model_type == "random_forest":
+            model = RandomForestClassifier(
+                n_estimators=config.n_estimators,
+                max_depth=config.max_depth,
+                random_state=42,
+            )
+        elif model_type == "decision_tree":
+            model = DecisionTreeClassifier(
+                max_depth=config.max_depth,
+                criterion=config.criterion,
+                random_state=42,
+            )
+        elif model_type == "svm":
+            model = SVC(C=config.C, kernel=config.kernel, probability=True)
+        else:
+            raise ValueError("Invalid model type")
 
-svm_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('svm', SVC(probability=True))
-])
+        pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", model)])
 
-X = df.drop(columns=['Survived'])
-y = df['Survived']
+        # Huấn luyện
+        pipeline.fit(X_train, y_train)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
+        # Dự đoán
+        y_pred = pipeline.predict(X_test)
+        y_probas = pipeline.predict_proba(X_test)
 
-logistic_regression_pipeline.fit(X_train, y_train)
-random_forest_pipeline.fit(X_train, y_train)
-tree_decision_pipeline.fit(X_train, y_train)
-svm_pipeline.fit(X_train, y_train)
+        # Tính chỉ số
+        acc = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, zero_division=0)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        roc_auc = roc_auc_score(y_test, y_probas[:, 1])
 
-# Compare model
-logistic_regression_score = cross_val_score(logistic_regression_pipeline, X_train, y_train, cv=5)
-random_forest_score = cross_val_score(random_forest_pipeline, X_train, y_train, cv=5)
-tree_decision_score = cross_val_score(tree_decision_pipeline, X_train, y_train, cv=5)
-svm_score = cross_val_score(svm_pipeline, X_train, y_train, cv=5)
+        # Log W&B
+        wandb.log(
+            {
+                "accuracy": acc,
+                "precision": precision,
+                "recall": recall,
+                "f1_score": f1,
+                "roc_auc": roc_auc,
+            }
+        )
 
-print("Logistic Regression score:", logistic_regression_score)
-print("Random Forest score:", random_forest_score)
-print("Decision Tree score:", tree_decision_score)
-print("SVM score:", svm_score)
+        wandb.log(
+            {
+                "confusion_matrix": wandb.plot.confusion_matrix(
+                    probs=None,
+                    y_true=y_test.values,
+                    preds=y_pred,
+                    class_names=["Perished (0)", "Survived (1)"],
+                )
+            }
+        )
 
-print(f"Logistic Regression mean: {round(logistic_regression_score.mean()*100, 3)}%")
-print(f"Random Forest mean: {round(random_forest_score.mean()*100, 3)}%")
-print(f"Decision Tree mean: {round(tree_decision_score.mean()*100, 3)}%")
-print(f"SVM mean: {round(svm_score.mean()*100, 3)}%")
+        wandb.log(
+            {
+                "roc_curve": wandb.plot.roc_curve(
+                    y_true=y_test.values,
+                    y_probas=y_probas,
+                    labels=["Not survived (0)", "Survived (1)"],
+                )
+            }
+        )
 
-# Predict
-logistic_regression_prediction = logistic_regression_pipeline.predict(X_test)
-random_forest_prediction = random_forest_pipeline.predict(X_test)
-tree_decision_prediction = tree_decision_pipeline.predict(X_test)
-svm_prediction = svm_pipeline.predict(X_test)
 
-logistic_regression_accuracy = accuracy_score(logistic_regression_prediction, y_test)
-print(f"Logistic Regression accuracy: {round(logistic_regression_accuracy*100, 3)}%")
-
-random_forest_accuracy = accuracy_score(random_forest_prediction, y_test)
-print(f"Random Forest accuracy: {round(random_forest_accuracy*100, 3)}%")
-
-tree_decision_accuracy = accuracy_score(tree_decision_prediction, y_test)
-print(f"Decision Tree accuracy: {round(tree_decision_accuracy*100, 3)}%")
-
-svm_accuracy = accuracy_score(svm_prediction, y_test)
-print(f"SVM accuracy: {round(svm_accuracy*100, 3)}%")
-
-scores = {
-    "Logistic Regression": logistic_regression_score.mean(),
-    "Random Forest":        random_forest_score.mean(),
-    "Decision Tree":        tree_decision_score.mean(),
-    "SVM":                  svm_score.mean(),
-}
-best_name = max(scores, key=scores.get)
-pipelines = {
-    "Logistic Regression": logistic_regression_pipeline,
-    "Random Forest":        random_forest_pipeline,
-    "Decision Tree":        tree_decision_pipeline,
-    "SVM":                  svm_pipeline,
-}
-best_pipeline = pipelines[best_name]
-print(f"\nModel tốt nhất: {best_name} (CV mean: {scores[best_name]*100:.2f}%)")
-
- 
-# ─── 1. Tạo thư mục artifacts ─────────────────────────────────────────────────
-os.makedirs("artifacts", exist_ok=True)
- 
-# ─── 2. Lưu model bằng joblib ─────────────────────────────────────────────────
-# Lưu toàn bộ pipeline (preprocessor + classifier)
-joblib.dump(best_pipeline, "artifacts/model.pkl")
- 
-# Lưu riêng preprocessor (dùng trong /model-info để lấy feature names)
-joblib.dump(preprocessor, "artifacts/preprocessor.pkl")
- 
-print("Đã lưu artifacts/model.pkl")
-print("Đã lưu artifacts/preprocessor.pkl")
- 
-# ─── 3. Ghi metadata (version model + version dữ liệu) ───────────────────────
-metadata = {
-    # Version model — tăng thủ công mỗi khi train lại
-    "model_version":     "1.0.0",
- 
-    # Version dữ liệu — ghi nhận dataset đang dùng
-    "data_version":      "titanic-kaggle-v1",
-    "data_source":       "dataset/raw/titanic.csv",
-    "data_shape":        {
-        "train_rows": len(X_train),
-        "test_rows":  len(X_test),
-        "features":   list(X.columns),
+# --- 3. ĐỊNH NGHĨA CONFIG SWEEP (Giữ nguyên cấu hình cũ của bạn) ---
+lr_sweep_config = {
+    "method": "grid",
+    "metric": {"name": "accuracy", "goal": "maximize"},
+    "parameters": {
+        "model_type": {"value": "logistic_regression"},
+        "C": {"values": [0.1, 1.0, 10.0]},
     },
- 
-    # Thông tin model
-    "best_model":        best_name,
-    "model_class":       type(best_pipeline.named_steps[list(best_pipeline.named_steps)[-1]]).__name__,
- 
-    # Kết quả đánh giá
-    "evaluation": {
-        "Logistic Regression": {
-            "cv_mean":  round(logistic_regression_score.mean(), 4),
-            "cv_std":   round(logistic_regression_score.std(),  4),
-            "accuracy": round(logistic_regression_accuracy,     4),
-        },
-        "Random Forest": {
-            "cv_mean":  round(random_forest_score.mean(), 4),
-            "cv_std":   round(random_forest_score.std(),  4),
-            "accuracy": round(random_forest_accuracy,     4),
-        },
-        "Decision Tree": {
-            "cv_mean":  round(tree_decision_score.mean(), 4),
-            "cv_std":   round(tree_decision_score.std(),  4),
-            "accuracy": round(tree_decision_accuracy,     4),
-        },
-        "SVM": {
-            "cv_mean":  round(svm_score.mean(), 4),
-            "cv_std":   round(svm_score.std(),  4),
-            "accuracy": round(svm_accuracy,     4),
-        },
-    },
- 
-    # Thời điểm train
-    "trained_at": datetime.now().isoformat(),
 }
- 
-with open("artifacts/metadata.json", "w", encoding="utf-8") as f:
-    json.dump(metadata, f, indent=2, ensure_ascii=False)
- 
-print("Đã lưu artifacts/metadata.json")
-print(json.dumps(metadata, indent=2, ensure_ascii=False))
+
+rf_sweep_config = {
+    "method": "grid",
+    "metric": {"name": "accuracy", "goal": "maximize"},
+    "parameters": {
+        "model_type": {"value": "random_forest"},
+        "n_estimators": {"values": [50, 100]},
+        "max_depth": {"values": [5, 10, None]},
+    },
+}
+
+dt_sweep_config = {
+    "method": "grid",
+    "metric": {"name": "accuracy", "goal": "maximize"},
+    "parameters": {
+        "model_type": {"value": "decision_tree"},
+        "max_depth": {"values": [3, 5, 10]},
+        "criterion": {"values": ["gini", "entropy"]},
+    },
+}
+
+svm_sweep_config = {
+    "method": "grid",
+    "metric": {"name": "accuracy", "goal": "maximize"},
+    "parameters": {
+        "model_type": {"value": "svm"},
+        "C": {"values": [0.1, 1.0, 5.0]},
+        "kernel": {"values": ["linear", "rbf"]},
+    },
+}
+
+# --- 4. KÍCH HOẠT CHẠY ---
+if __name__ == "__main__":
+    # (Mở comment phần sweep nếu bạn muốn quét lại tham số với cách điền mới này)
+    # PROJECT_NAME = "titanic-separated-sweeps"
+    # all_sweeps = [("Random Forest", rf_sweep_config)]
+    # for model_name, config in all_sweeps:
+    #     sweep_id = wandb.sweep(config, project=PROJECT_NAME)
+    #     wandb.agent(sweep_id, function=train)
+
+    print("\n=== TIẾN HÀNH TRAIN MODEL TỐT NHẤT VÀ ĐÓNG GÓI ===")
+    best_model = RandomForestClassifier(
+        n_estimators=100, max_depth=10, random_state=42
+    )
+
+    final_pipeline = Pipeline(
+        steps=[("preprocessor", preprocessor), ("model", best_model)]
+    )
+
+    print("Đang huấn luyện mô hình với toàn bộ dữ liệu...")
+    final_pipeline.fit(X_train, y_train)
+
+    os.makedirs("artifacts", exist_ok=True)
+    joblib.dump(final_pipeline, "artifacts/model.pkl")
+
+    joblib.dump(preprocessor, "artifacts/preprocessor.pkl")
+    print("Model và preprocessor đã được lưu thành công vào thư mục artifacts/!")

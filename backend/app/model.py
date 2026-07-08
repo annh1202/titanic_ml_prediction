@@ -31,6 +31,7 @@ def predict_survival(pclass: int, sex: str, age: float,
     # Tên cột phải khớp với X mà pipeline.py đã train
     df = pd.DataFrame([{
         "Pclass":   pclass,
+        "Name":     "Unknown",
         "Sex":      sex,
         "Age":      age,
         "SibSp":    sibsp,
