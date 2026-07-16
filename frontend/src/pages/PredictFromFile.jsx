@@ -120,10 +120,10 @@ function PredictFromFile() {
             <tbody>
               {results.map((item, index) => (
                 <tr key={index} style={index % 2 === 0 ? styles.trEven : styles.trOdd}>
-                  <td style={styles.td}>Hạng {item.Pclass}</td>
-                  <td style={styles.td}>{item.Sex === 'male' ? 'Nam' : 'Nữ'}</td>
-                  <td style={styles.td}>{item.Age}</td>
-                  <td style={styles.td}>${Number(item.Fare).toFixed(2)}</td>
+                  <td style={styles.td}>Hạng {item.pclass}</td>
+                  <td style={styles.td}>{item.sex === 'male' ? 'Nam' : 'Nữ'}</td>
+                  <td style={styles.td}>{item.age}</td>
+                  <td style={styles.td}>${Number(item.fare).toFixed(2)}</td>
                   <td style={{ 
                     ...styles.td, 
                     fontWeight: 'bold', 

@@ -6,6 +6,15 @@ import os
 MODEL_PATH        = os.getenv("MODEL_PATH",        "artifacts/model.pkl")
 PREPROCESSOR_PATH = os.getenv("PREPROCESSOR_PATH", "artifacts/preprocessor.pkl")
 
+# Import các class custom và map vào __main__ để joblib có thể load
+try:
+    import __main__
+    import pipeline
+    __main__.GroupMedianImputer = pipeline.GroupMedianImputer
+    __main__.FareQuartileImputer = pipeline.FareQuartileImputer
+except ImportError as e:
+    print(f"Lỗi khi import các custom transformers: {e}")
+
 # Load model khi server khởi động
 try:
     model        = joblib.load(MODEL_PATH)
@@ -70,7 +79,17 @@ def get_model_info() -> dict:
             ct = model.named_steps["preprocessor"]
             feature_names = ct.get_feature_names_out()
         except Exception:
-            feature_names = [f"feature_{i}" for i in range(len(classifier.feature_importances_))]
+            # Nếu custom transformers không hỗ trợ get_feature_names_out(), dùng tên được map sẵn
+            feature_names = [
+                "Tuổi (Age)", 
+                "Phân khúc Giá vé (Fare Group)", 
+                "Anh chị em / Vợ chồng (SibSp)", 
+                "Cha mẹ / Con cái (Parch)", 
+                "Hạng vé (Pclass)", 
+                "Giới tính Nam (Sex_male)", 
+                "Cảng Q (Embarked_Q)", 
+                "Cảng S (Embarked_S)"
+            ]
 
         info["feature_importances"] = {
             name: round(float(imp), 4)

@@ -17,8 +17,9 @@ import os
 
 class GroupMedianImputer(BaseEstimator, TransformerMixin):
     def __init__(self):
-        self.local_medians = {}
-        self.global_median = None
+        # Attributes should have trailing underscores to be recognized as fitted by sklearn
+        self.local_medians_ = {}
+        self.global_median_ = None
 
     def fit(self, X, y=None):
         X_df = pd.DataFrame(X).copy()
@@ -27,9 +28,9 @@ class GroupMedianImputer(BaseEstimator, TransformerMixin):
             titles = X_df["Name"].str.extract(r" ([A-Za-z]+)\.", expand=False)
             X_df["Title"] = titles
             # Tính toán giá trị median của Age theo từng Title dựa trên tập Train
-            self.local_medians = X_df.groupby("Title")["Age"].median().to_dict()
+            self.local_medians_ = X_df.groupby("Title")["Age"].median().to_dict()
         
-        self.global_median = X_df["Age"].median()
+        self.global_median_ = X_df["Age"].median()
         return self
 
     def transform(self, X):
@@ -38,10 +39,10 @@ class GroupMedianImputer(BaseEstimator, TransformerMixin):
         if "Name" in X_df.columns:
             titles = X_df["Name"].str.extract(r" ([A-Za-z]+)\.", expand=False)
             # Điền khuyết theo nhóm Title đã học từ tập Train
-            X_df["Age"] = X_df["Age"].fillna(titles.map(self.local_medians))
+            X_df["Age"] = X_df["Age"].fillna(titles.map(self.local_medians_))
             
         # Phòng trường hợp Title lạ ở tập Test chưa có trong Train, điền bằng global_median
-        X_df["Age"] = X_df["Age"].fillna(self.global_median)
+        X_df["Age"] = X_df["Age"].fillna(self.global_median_)
 
         # Trả về các cột numeric sau khi đã xử lý xong cột Age
         return X_df[["Age"]]
@@ -50,9 +51,9 @@ class GroupMedianImputer(BaseEstimator, TransformerMixin):
 class FareQuartileImputer(BaseEstimator, TransformerMixin):
     def __init__(self):
         # Khởi tạo các mốc phân đoạn sẽ học được từ tập Train
-        self.q1 = None
-        self.q2 = None
-        self.q3 = None
+        self.q1_ = None
+        self.q2_ = None
+        self.q3_ = None
 
     def fit(self, X, y=None):
         X_df = pd.DataFrame(X).copy()
@@ -78,9 +79,9 @@ class FareQuartileImputer(BaseEstimator, TransformerMixin):
         idx_q3 = max(0, min(idx_q3, N - 1))
 
         # 4. LƯU LẠI GIÁ TRỊ CÁC MỐC QUARTILE HỌC ĐƯỢC
-        self.q1 = sorted_fare[idx_q1]
-        self.q2 = sorted_fare[idx_q2]
-        self.q3 = sorted_fare[idx_q3]
+        self.q1_ = sorted_fare[idx_q1]
+        self.q2_ = sorted_fare[idx_q2]
+        self.q3_ = sorted_fare[idx_q3]
 
         return self
 
@@ -93,11 +94,11 @@ class FareQuartileImputer(BaseEstimator, TransformerMixin):
             # Nếu gặp giá trị khuyết ở tập Test, tạm xếp vào nhóm rẻ nhất hoặc nhóm 0
             if pd.isna(fare):
                 return 0
-            if fare <= self.q1:
+            if fare <= self.q1_:
                 return 0  # Nhóm vé siêu rẻ
-            elif fare <= self.q2:
+            elif fare <= self.q2_:
                 return 1  # Nhóm vé trung bình thấp
-            elif fare <= self.q3:
+            elif fare <= self.q3_:
                 return 2  # Nhóm vé trung bình cao
             else:
                 return 3  # Nhóm vé thương gia / hạng sang
@@ -286,7 +287,7 @@ if __name__ == "__main__":
     #     sweep_id = wandb.sweep(config, project=PROJECT_NAME)
     #     wandb.agent(sweep_id, function=train)
 
-    print("\n=== TIẾN HÀNH TRAIN MODEL TỐT NHẤT VÀ ĐÓNG GÓI ===")
+    print("\n=== TIEN HANH TRAIN MODEL TOT NHAT VA DONG GOI ===")
     best_model = RandomForestClassifier(
         n_estimators=100, max_depth=10, random_state=42
     )
@@ -295,11 +296,25 @@ if __name__ == "__main__":
         steps=[("preprocessor", preprocessor), ("model", best_model)]
     )
 
-    print("Đang huấn luyện mô hình với toàn bộ dữ liệu...")
+    print("Dang huan luyen mo hinh voi toan bo du lieu...")
     final_pipeline.fit(X_train, y_train)
 
     os.makedirs("artifacts", exist_ok=True)
     joblib.dump(final_pipeline, "artifacts/model.pkl")
 
     joblib.dump(preprocessor, "artifacts/preprocessor.pkl")
-    print("Model và preprocessor đã được lưu thành công vào thư mục artifacts/!")
+    print("Model va preprocessor da duoc luu thanh cong vao thu muc artifacts/!")
+
+    print("\n=== DANH GIA MO HINH TREN TAP TEST ===")
+    y_pred = final_pipeline.predict(X_test)
+    
+    acc = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, zero_division=0)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    
+    print(f"Accuracy:  {acc:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall:    {recall:.4f}")
+    print(f"F1 Score:  {f1:.4f}")
+
