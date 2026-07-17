@@ -36,22 +36,19 @@ function Predict() {
         },
 
         body: JSON.stringify({
-          Pclass: Number(formData.Pclass),
-          Sex: formData.Sex,
-          Age: Number(formData.Age),
-          SibSp: Number(formData.SibSp),
-          Parch: Number(formData.Parch),
-          Fare: Number(formData.Fare),
-          Embarked: formData.Embarked
+          pclass: Number(formData.Pclass),
+          sex: formData.Sex,
+          age: Number(formData.Age),
+          sibsp: Number(formData.SibSp),
+          parch: Number(formData.Parch),
+          fare: Number(formData.Fare),
+          embarked: formData.Embarked
         })
       });
 
       const data = await response.json();
 
       console.log("Dữ liệu thô từ FastAPI trả về:", data);
-
-      const resVal = Number(data.prediction);
-      const confVal = Number(data.confidence);
 
       setPrediction({
         result: data.survived,
@@ -61,14 +58,12 @@ function Predict() {
 
       const localHistory = JSON.parse(localStorage.getItem('titanic_history') || '[]');
       const newHistoryItem = {
-          Pclass: formData.Pclass,
-          Sex: formData.Sex,
-          Age: formData.Age,
-          Fare: formData.Fare,
-          Embarked: formData.Embarked
-          prediction: resVal,
-          confidence: confVal,
-        timestamp: new Date().toLocaleString()      
+          name: 'Ẩn danh',
+          pclass: formData.Pclass,
+          sex: formData.Sex === 'male' ? 'Nam' : 'Nữ',
+          age: formData.Age,
+          result: data.survived === 1 ? "Sống sót" : "Không sống sót",
+          date: new Date().toLocaleString()
       };
       localStorage.setItem('titanic_history', JSON.stringify([newHistoryItem, ...localHistory]));
       
