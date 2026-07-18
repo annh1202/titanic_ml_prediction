@@ -1,4 +1,5 @@
 import pandas as pd
+from pathlib import Path
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
@@ -15,73 +16,29 @@ import joblib
 import os
 
 
-class GroupMedianImputer(BaseEstimator, TransformerMixin):
-    def __init__(self):
-        # Attributes should have trailing underscores to be recognized as fitted by sklearn
-        self.local_medians_ = {}
-        self.global_median_ = None
-
-    def fit(self, X, y=None):
-        X_df = pd.DataFrame(X).copy()
-
-        if "Name" in X_df.columns:
-            titles = X_df["Name"].str.extract(r" ([A-Za-z]+)\.", expand=False)
-            X_df["Title"] = titles
-            # Tính toán giá trị median của Age theo từng Title dựa trên tập Train
-            self.local_medians_ = X_df.groupby("Title")["Age"].median().to_dict()
-        
-        self.global_median_ = X_df["Age"].median()
-        return self
-
-    def transform(self, X):
-        X_df = pd.DataFrame(X).copy()
-        
-        if "Name" in X_df.columns:
-            titles = X_df["Name"].str.extract(r" ([A-Za-z]+)\.", expand=False)
-            # Điền khuyết theo nhóm Title đã học từ tập Train
-            X_df["Age"] = X_df["Age"].fillna(titles.map(self.local_medians_))
-            
-        # Phòng trường hợp Title lạ ở tập Test chưa có trong Train, điền bằng global_median
-        X_df["Age"] = X_df["Age"].fillna(self.global_median_)
-
-        # Trả về các cột numeric sau khi đã xử lý xong cột Age
-        return X_df[["Age"]]
-
-
 class FareQuartileImputer(BaseEstimator, TransformerMixin):
     def __init__(self):
-        # Khởi tạo các mốc phân đoạn sẽ học được từ tập Train
         self.q1_ = None
         self.q2_ = None
         self.q3_ = None
 
     def fit(self, X, y=None):
         X_df = pd.DataFrame(X).copy()
-
-        # 1. Trích xuất cột Fare đầu tiên và điền khuyết bằng trung vị (phòng hờ dữ liệu NaN)
         fare_series = X_df.iloc[:, 0]
         global_median = fare_series.median()
         fare_clean = fare_series.fillna(global_median)
 
-        # 2. CHUYỂN THÀNH LIST VÀ SẮP XẾP TĂNG DẦN (Thuật toán thủ công)
         sorted_fare = sorted(fare_clean.tolist())
         N = len(sorted_fare)
 
-        # 3. TÍNH VỊ TRÍ INDEX CHO TỪNG TỨ PHÂN VỊ
-        # Trừ 1 ở cuối công thức để khớp với Index chạy từ 0 trong Python list
-        idx_q1 = int(0.25 * (N + 1)) - 1
-        idx_q2 = int(0.50 * (N + 1)) - 1
-        idx_q3 = int(0.75 * (N + 1)) - 1
+        idx_q1 = max(0, min(int(0.25 * (N + 1)) - 1, N - 1))
+        idx_q2 = max(0, min(int(0.50 * (N + 1)) - 1, N - 1))
+        idx_q3 = max(0, min(int(0.75 * (N + 1)) - 1, N - 1))
 
-        # Giới hạn index không vượt quá độ dài mảng (phòng trường hợp mảng quá ngắn)
-        idx_q1 = max(0, min(idx_q1, N - 1))
-        idx_q2 = max(0, min(idx_q2, N - 1))
-        idx_q3 = max(0, min(idx_q3, N - 1))
-
-        # 4. LƯU LẠI GIÁ TRỊ CÁC MỐC QUARTILE HỌC ĐƯỢC
         self.q1_ = sorted_fare[idx_q1]
         self.q2_ = sorted_fare[idx_q2]
         self.q3_ = sorted_fare[idx_q3]
+        self.is_fitted_ = True
 
         return self
 
@@ -89,29 +46,29 @@ class FareQuartileImputer(BaseEstimator, TransformerMixin):
         X_df = pd.DataFrame(X).copy()
         fare_series = X_df.iloc[:, 0]
 
-        # Hàm phân loại thủ công dựa trên các mốc Q1, Q2, Q3 đã học
         def classify_fare(fare):
-            # Nếu gặp giá trị khuyết ở tập Test, tạm xếp vào nhóm rẻ nhất hoặc nhóm 0
             if pd.isna(fare):
                 return 0
             if fare <= self.q1_:
-                return 0  # Nhóm vé siêu rẻ
+                return 0
             elif fare <= self.q2_:
-                return 1  # Nhóm vé trung bình thấp
+                return 1
             elif fare <= self.q3_:
-                return 2  # Nhóm vé trung bình cao
+                return 2
             else:
-                return 3  # Nhóm vé thương gia / hạng sang
+                return 3
 
-        # Áp dụng hàm phân loại lên toàn bộ cột Fare
         fare_binned = fare_series.apply(classify_fare)
-
-        # Trả về dưới dạng DataFrame 2D theo đúng chuẩn đầu ra của Scikit-Learn
         return pd.DataFrame(fare_binned)
+
+    def get_feature_names_out(self, input_features=None):
+        return ["Fare_Quartile"]
 
 
 # --- 1. CHUẨN BỊ DỮ LIỆU & PREPROCESSOR ---
-titanic_dataset = pd.read_csv("data/titanic.csv")
+BASE_DIR = Path(__file__).resolve().parent
+DATA_PATH = BASE_DIR / "data" / "titanic.csv"
+titanic_dataset = pd.read_csv(DATA_PATH)
 X = titanic_dataset.drop(columns=["Survived"])
 y = titanic_dataset["Survived"]
 
@@ -119,48 +76,60 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-age_transformer = Pipeline(steps=[
-    ("age_imputer", GroupMedianImputer()),
-    ("age_scaler", StandardScaler())
-])
+def get_clean_preprocessor():
+    """Hàm tạo mới preprocessor đảm bảo an toàn dữ liệu và đồng bộ cấu trúc cột"""
+    age_transformer = Pipeline(
+        steps=[("age_imputer", SimpleImputer(strategy="median")), ("age_scaler", StandardScaler())]
+    )
 
+    fare_transformer = Pipeline(steps=[("fare_imputer", FareQuartileImputer())])
 
-fare_transformer = Pipeline(steps=[
-    ("fare_imputer", FareQuartileImputer())
-])
+    other_numeric_transformer = Pipeline(
+        steps=[
+            ("num_imputer", SimpleImputer(strategy="median")),
+            ("num_scaler", MinMaxScaler()),
+        ]
+    )
 
+    ordinal_transformer = Pipeline(
+        steps=[
+            ("ordinal_imputer", SimpleImputer(strategy="most_frequent")),
+            (
+                "ordinal",
+                OrdinalEncoder(
+                    categories=[[1, 2, 3]],
+                    handle_unknown="use_encoded_value",
+                    unknown_value=-1,
+                ),
+            ),
+        ]
+    )
 
-other_numeric_transformer = Pipeline(steps=[
-    ("num_imputer", SimpleImputer(strategy="median")),
-    ("num_scaler", MinMaxScaler())
-])
+    categorical_transformer = Pipeline(
+        steps=[
+            ("cate_imputer", SimpleImputer(strategy="most_frequent")),
+            (
+                "onehot",
+                OneHotEncoder(
+                    drop="first",
+                    handle_unknown="ignore",
+                    sparse_output=False,
+                    categories=[["female", "male"], ["C", "Q", "S"]],
+                ),
+            ),
+        ]
+    )
 
-
-ordinal_transformer = Pipeline(steps=[
-    ("ordinal_imputer", SimpleImputer(strategy="most_frequent")),
-    ("ordinal", OrdinalEncoder(
-        categories=[[1, 2, 3]],
-        handle_unknown="use_encoded_value",
-        unknown_value=-1))
-])
-
-
-categorical_transformer = Pipeline(steps=[
-    ("cate_imputer", SimpleImputer(strategy="most_frequent")),
-    ("onehot", OneHotEncoder(drop="first", handle_unknown="ignore", sparse_output=False))
-])
-
-
-preprocessor = ColumnTransformer(
-    transformers=[
-        ("age", age_transformer, ["Age", "Name"]),
-        ("fare", fare_transformer, ["Fare"]),
-        ("other_num", other_numeric_transformer, ["SibSp", "Parch"]),
-        ("ordinal", ordinal_transformer, ["Pclass"]),
-        ("categorical", categorical_transformer, ["Sex", "Embarked"]),
-    ],
-    remainder="drop",
-)
+    return ColumnTransformer(
+        transformers=[
+            ("age", age_transformer, ["Age"]),
+            ("fare", fare_transformer, ["Fare"]),
+            ("other_num", other_numeric_transformer, ["SibSp", "Parch"]),
+            ("ordinal", ordinal_transformer, ["Pclass"]),
+            ("categorical", categorical_transformer, ["Sex", "Embarked"]),
+        ],
+        remainder="drop",
+    )
 
 
 # --- 2. HÀM TRAIN CHUNG CHO AGENT ---
@@ -189,7 +158,8 @@ def train():
         else:
             raise ValueError("Invalid model type")
 
-        pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", model)])
+        current_preprocessor = get_clean_preprocessor()
+        pipeline = Pipeline(steps=[("preprocessor", current_preprocessor), ("model", model)])
 
         # Huấn luyện
         pipeline.fit(X_train, y_train)
@@ -238,7 +208,7 @@ def train():
         )
 
 
-# --- 3. ĐỊNH NGHĨA CONFIG SWEEP (Giữ nguyên cấu hình cũ của bạn) ---
+# --- 3. ĐỊNH NGHĨA CONFIG SWEEP ---
 lr_sweep_config = {
     "method": "grid",
     "metric": {"name": "accuracy", "goal": "maximize"},
@@ -280,31 +250,28 @@ svm_sweep_config = {
 
 # --- 4. KÍCH HOẠT CHẠY ---
 if __name__ == "__main__":
-    # (Mở comment phần sweep nếu bạn muốn quét lại tham số với cách điền mới này)
     # PROJECT_NAME = "titanic-separated-sweeps"
     # all_sweeps = [("Random Forest", rf_sweep_config)]
     # for model_name, config in all_sweeps:
     #     sweep_id = wandb.sweep(config, project=PROJECT_NAME)
     #     wandb.agent(sweep_id, function=train)
+    #
 
     print("\n=== TIEN HANH TRAIN MODEL TOT NHAT VA DONG GOI ===")
-    best_model = RandomForestClassifier(
-        n_estimators=100, max_depth=10, random_state=42
-    )
+    best_model = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=42)
 
-    final_pipeline = Pipeline(
-        steps=[("preprocessor", preprocessor), ("model", best_model)]
-    )
+    # Tạo preprocessor độc lập hoàn toàn cho mô hình cuối cùng
+    final_preprocessor = get_clean_preprocessor()
+    final_pipeline = Pipeline(steps=[("preprocessor", final_preprocessor), ("model", best_model)])
 
     print("Dang huan luyen mo hinh voi toan bo du lieu...")
     final_pipeline.fit(X_train, y_train)
 
-    os.makedirs("artifacts", exist_ok=True)
-    joblib.dump(final_pipeline, "artifacts/model.pkl")
-
-    joblib.dump(preprocessor, "artifacts/preprocessor.pkl")
-    print("Model va preprocessor da duoc luu thanh cong vao thu muc artifacts/!")
-
+    os.makedirs(BASE_DIR / "artifacts", exist_ok=True)
+    joblib.dump(final_pipeline, BASE_DIR / "artifacts" / "model.pkl")
+    joblib.dump(final_preprocessor, BASE_DIR / "artifacts" / "preprocessor.pkl")
+    print("Model va preprocessor da duoc luu thanh cong!")
+    
     print("\n=== DANH GIA MO HINH TREN TAP TEST ===")
     y_pred = final_pipeline.predict(X_test)
     

@@ -10,7 +10,6 @@ PREPROCESSOR_PATH = os.getenv("PREPROCESSOR_PATH", "artifacts/preprocessor.pkl")
 try:
     import __main__
     import pipeline
-    __main__.GroupMedianImputer = pipeline.GroupMedianImputer
     __main__.FareQuartileImputer = pipeline.FareQuartileImputer
 except ImportError as e:
     print(f"Lỗi khi import các custom transformers: {e}")

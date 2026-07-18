@@ -113,7 +113,10 @@ function PredictFromFile() {
                 <th style={styles.th}>Hạng vé</th>
                 <th style={styles.th}>Giới tính</th>
                 <th style={styles.th}>Tuổi</th>
+                <th style={styles.th}>SibSp</th>
+                <th style={styles.th}>Parch</th>
                 <th style={styles.th}>Giá vé</th>
+                <th style={styles.th}>Cảng</th>
                 <th style={styles.th}>Kết quả dự đoán</th>
               </tr>
             </thead>
@@ -123,7 +126,10 @@ function PredictFromFile() {
                   <td style={styles.td}>Hạng {item.pclass}</td>
                   <td style={styles.td}>{item.sex === 'male' ? 'Nam' : 'Nữ'}</td>
                   <td style={styles.td}>{item.age}</td>
+                  <td style={styles.td}>{item.sibsp}</td>
+                  <td style={styles.td}>{item.parch}</td>
                   <td style={styles.td}>${Number(item.fare).toFixed(2)}</td>
+                  <td style={styles.td}>{item.embarked}</td>
                   <td style={{ 
                     ...styles.td, 
                     fontWeight: 'bold', 
