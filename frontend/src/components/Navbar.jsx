@@ -38,7 +38,11 @@ function Navbar() {
           </NavLink>
 
           <NavLink to="/predict-from-file" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <FaFileUpload /> Hàng loạt
+            <FaFileUpload /> Hàng loạt CSV
+          </NavLink>
+
+          <NavLink to="/batch-manual" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <FaFileUpload /> Hàng loạt Thủ công
           </NavLink>
         </div>
       </div>
