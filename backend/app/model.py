@@ -76,7 +76,20 @@ def get_model_info() -> dict:
         # Lấy tên feature sau khi qua ColumnTransformer
         try:
             ct = model.named_steps["preprocessor"]
-            feature_names = ct.get_feature_names_out()
+            raw_names = ct.get_feature_names_out()
+            
+            # Ánh xạ tên feature thô sang tên dễ đọc
+            name_mapping = {
+                "age__Age": "Tuổi (Age)",
+                "fare__Fare_Quartile": "Phân khúc Giá vé (Fare Group)",
+                "other_num__SibSp": "Anh chị em / Vợ chồng (SibSp)",
+                "other_num__Parch": "Cha mẹ / Con cái (Parch)",
+                "ordinal__Pclass": "Hạng vé (Pclass)",
+                "categorical__Sex_male": "Giới tính Nam (Sex_male)",
+                "categorical__Embarked_Q": "Cảng Q (Embarked_Q)",
+                "categorical__Embarked_S": "Cảng S (Embarked_S)"
+            }
+            feature_names = [name_mapping.get(name, name) for name in raw_names]
         except Exception:
             # Nếu custom transformers không hỗ trợ get_feature_names_out(), dùng tên được map sẵn
             feature_names = [
